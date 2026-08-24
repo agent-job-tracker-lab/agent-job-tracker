@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AgentCompanyStatus {
+  ACTIVE
+  ON_HOLD
+  ENDED
+
+  @@map("agent_company_status")
+}
+
+enum WorkStyle {
+  FULL_REMOTE
+  HYBRID
+  ONSITE
+  UNKNOWN
+
+  @@map("work_style")
+}
+
+enum ApplicationStatus {
+  NOT_APPLIED
+  PROPOSING
+  APPLIED
+  DOCUMENT_REVIEW
+  INTERVIEW_SCHEDULED
+  AWAITING_RESULT
+  ENGAGEMENT_CONFIRMED
+  WITHDRAWN
+  REJECTED
+
+  @@map("application_status")
+}
+
+model User {
+  id              String                     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  name            String
+  email           String                     @unique
+  emailVerified   Boolean                    @default(false) @map("email_verified")
+  image           String?
+  createdAt       DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  accounts        Account[]
+  sessions        Session[]
+  statusHistories ApplicationStatusHistory[]
+
+  @@map("users")
+}
+
+model Account {
+  id                    String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId                String    @map("user_id") @db.Uuid
+  issuer                String
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at") @db.Timestamptz(3)
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at") @db.Timestamptz(3)
+  scope                 String?
+  idToken               String?   @map("id_token")
+  password              String?
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@unique([issuer, accountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @unique
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Verification {
+  id         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([identifier])
+  @@index([expiresAt])
+  @@map("verifications")
+}
+
+model RateLimit {
+  id          String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  key         String @unique
+  count       Int
+  lastRequest BigInt @map("last_request") @db.BigInt
+
+  @@map("rate_limits")
+}
+
+model AgentCompany {
+  id              String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  companyName     String             @map("company_name")
+  contactName     String?            @map("contact_name")
+  contactDetails  String?            @map("contact_details")
+  characteristics String?
+  lastContactDate DateTime?          @map("last_contact_date") @db.Date
+  status          AgentCompanyStatus @default(ACTIVE)
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime?          @map("deleted_at") @db.Timestamptz(3)
+  jobs            Job[]
+
+  @@index([deletedAt, createdAt(sort: Desc), id(sort: Desc)])
+  @@map("agent_companies")
+}
+
+model Job {
+  id                  String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  agentCompanyId      String       @map("agent_company_id") @db.Uuid
+  jobName             String       @map("job_name")
+  companyName         String?      @map("company_name")
+  commercialFlow      String?      @map("commercial_flow")
+  monthlyRateMinYen   Int?         @map("monthly_rate_min_yen")
+  monthlyRateMaxYen   Int?         @map("monthly_rate_max_yen")
+  workStyle           WorkStyle    @map("work_style")
+  workStyleNotes      String?      @map("work_style_notes")
+  prefecture          String?
+  city                String?
+  nearestStation      String?      @map("nearest_station")
+  locationNotes       String?      @map("location_notes")
+  utilizationPercent  Decimal?     @map("utilization_percent") @db.Decimal(5, 2)
+  technologies        String[]     @default([])
+  processPhases       String[]     @default([]) @map("process_phases")
+  requiredConditions  String?      @map("required_conditions")
+  preferredConditions String?      @map("preferred_conditions")
+  createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt           DateTime?    @map("deleted_at") @db.Timestamptz(3)
+  agentCompany        AgentCompany @relation(fields: [agentCompanyId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  application         Application?
+
+  @@index([deletedAt, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([agentCompanyId])
+  @@map("jobs")
+}
+
+model Application {
+  id              String                     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  jobId           String                     @unique @map("job_id") @db.Uuid
+  currentStatus   ApplicationStatus          @default(NOT_APPLIED) @map("current_status")
+  statusUpdatedAt DateTime                   @default(now()) @map("status_updated_at") @db.Timestamptz(3)
+  createdAt       DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  job             Job                        @relation(fields: [jobId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  statusHistories ApplicationStatusHistory[]
+
+  @@map("applications")
+}
+
+model ApplicationStatusHistory {
+  id              String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  applicationId   String            @map("application_id") @db.Uuid
+  previousStatus  ApplicationStatus @map("previous_status")
+  newStatus       ApplicationStatus @map("new_status")
+  changedAt       DateTime          @map("changed_at") @db.Timestamptz(3)
+  changedByUserId String            @map("changed_by_user_id") @db.Uuid
+  application     Application       @relation(fields: [applicationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  changedByUser   User              @relation(fields: [changedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([applicationId, changedAt(sort: Desc), id(sort: Desc)])
+  @@index([changedByUserId])
+  @@map("application_status_histories")
+}
