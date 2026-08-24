@@ -5,9 +5,14 @@ import { prisma } from "@/lib/db";
 
 type CreateAuthOptions = {
   allowSignUp?: boolean;
+  enableRateLimit?: boolean;
 };
 
-export function createAuth({ allowSignUp = false }: CreateAuthOptions = {}) {
+export function createAuth({
+  allowSignUp = false,
+  enableRateLimit = process.env.NODE_ENV === "production" ||
+    process.env.AUTH_RATE_LIMIT_ENABLED === "true",
+}: CreateAuthOptions = {}) {
   return betterAuth({
     appName: "Agent Job Tracker",
     database: prismaAdapter(prisma, {
@@ -21,6 +26,7 @@ export function createAuth({ allowSignUp = false }: CreateAuthOptions = {}) {
       autoSignIn: false,
     },
     rateLimit: {
+      enabled: enableRateLimit,
       storage: "database",
       modelName: "RateLimit",
       customRules: {
