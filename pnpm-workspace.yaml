@@ -4,6 +4,9 @@ allowBuilds:
   prisma: true
   unrs-resolver: true
 overrides:
+  # GHSA-ggr8-5vv4-36mx is fixed in deepmerge-ts 8.x. Prisma 7.9.1 still
+  # resolves 7.x, so keep the patched version explicit until Prisma updates.
   deepmerge-ts: 8.0.2
 minimumReleaseAgeExclude:
+  # This exact React type release is part of the verified lockfile.
   - "@types/react-dom@19.2.5"
