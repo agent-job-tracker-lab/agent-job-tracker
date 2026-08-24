@@ -464,7 +464,7 @@ Sprint 1でEmail verification UIは提供しないが、Better Auth core schema�
 |Field|DB型|必須・制約|
 |---|---|---|
 |`id`|`uuid`|PK、`uuidv7()`|
-|`key`|`text`|NOT NULL、検索index|
+|`key`|`text`|NOT NULL、UNIQUE。固定したBetter Auth 1.7.1の生成schemaへ合わせる|
 |`count`|`integer`|NOT NULL|
 |`lastRequest`|`bigint`|NOT NULL、epoch millisecond|
 
@@ -548,7 +548,7 @@ lock取得順序は、1つの処理で複数行をlockする場合にID昇順へ
 |`sessions`|`(expires_at)`|期限切れcleanup候補|
 |`verifications`|`(identifier)`|Verification lookup|
 |`verifications`|`(expires_at)`|期限切れcleanup候補|
-|`rate_limits`|`(key)`|Rate limit key lookup|
+|`rate_limits`|UNIQUE `(key)`|Better Authのrate limit key lookupと原子的な更新|
 
 案件100件程度のSprint 1ではindexを過剰に増やさない。`technologies`や`process_phases`のGIN index、company・job名検索indexは検索要件を実装するSprint 2以降に実queryと実行計画を確認して追加する。
 
