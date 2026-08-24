@@ -24,19 +24,22 @@
 
 ```bash
 node --version
-corepack enable
-corepack prepare pnpm@11.23.0 --activate
-pnpm --version
+corepack --version
+corepack pnpm --version
 docker --version
 docker compose version
 ```
+
+このREADMEでは、Node.jsのinstall先にglobal shimを書き込む権限へ依存しないよう、`pnpm`を`corepack pnpm`経由で実行する。Corepackは`package.json`の`packageManager`を読み、project指定のpnpm versionを使用する。
+
+user管理のpnpm shimがすでに有効な環境では、`corepack pnpm`を`pnpm`へ読み替えてもよい。`corepack enable`はNode.jsのinstall先によって管理者権限を要求するため、本projectの必須手順には含めない。
 
 ## 初回セットアップ
 
 1. 依存関係をインストールします。
 
    ```bash
-   pnpm install --frozen-lockfile
+   corepack pnpm install --frozen-lockfile
    ```
 
 2. 環境変数ファイルを作成します。
@@ -50,27 +53,27 @@ docker compose version
 3. PostgreSQLを起動します。
 
    ```bash
-   pnpm db:up
-   pnpm db:health
+   corepack pnpm db:up
+   corepack pnpm db:health
    ```
 
 4. Migrationを適用し、Prisma Clientを生成します。
 
    ```bash
-   pnpm db:migrate
-   pnpm db:generate
+   corepack pnpm db:migrate
+   corepack pnpm db:generate
    ```
 
 5. 必要に応じて、機密情報を含まない開発用ダミーデータを投入します。
 
    ```bash
-   pnpm db:seed
+   corepack pnpm db:seed
    ```
 
 6. 開発サーバーを起動します。
 
    ```bash
-   pnpm dev
+   corepack pnpm dev
    ```
 
    [http://localhost:3000](http://localhost:3000)を開きます。
@@ -90,7 +93,7 @@ BOOTSTRAP_USER_PASSWORD=十分に長いローカル専用パスワード
 その後、次を実行します。
 
 ```bash
-pnpm auth:bootstrap
+corepack pnpm auth:bootstrap
 ```
 
 - Better Authのserver APIを通すため、パスワードはhashだけがDBへ保存されます。
@@ -99,27 +102,27 @@ pnpm auth:bootstrap
 
 ## 日常的に使うコマンド
 
-| コマンド                 | 用途                                                  |
-| ------------------------ | ----------------------------------------------------- |
-| `pnpm dev`               | 開発サーバーを起動                                    |
-| `pnpm build`             | production build                                      |
-| `pnpm start`             | build済みアプリを起動                                 |
-| `pnpm lint`              | ESLint                                                |
-| `pnpm format`            | Prettierで整形                                        |
-| `pnpm format:check`      | 整形差分の確認                                        |
-| `pnpm typecheck`         | TypeScript型チェック                                  |
-| `pnpm test`              | unit/component test                                   |
-| `pnpm test:e2e`          | ChromiumでE2E smoke test                              |
-| `pnpm check`             | lint、format、typecheck、unit test、buildを順番に実行 |
-| `pnpm db:up`             | PostgreSQLをbackground起動                            |
-| `pnpm db:down`           | PostgreSQL containerを停止・削除（volumeは保持）      |
-| `pnpm db:health`         | PostgreSQLのhealth check                              |
-| `pnpm db:generate`       | Prisma Client生成                                     |
-| `pnpm db:migrate`        | 開発DBへMigration適用                                 |
-| `pnpm db:migrate:deploy` | 既存Migrationを適用                                   |
-| `pnpm db:seed`           | 開発用ダミーデータを冪等投入                          |
-| `pnpm db:studio`         | Prisma Studio                                         |
-| `pnpm auth:bootstrap`    | 初期Userを1回だけ作成                                 |
+| コマンド                          | 用途                                                  |
+| --------------------------------- | ----------------------------------------------------- |
+| `corepack pnpm dev`               | 開発サーバーを起動                                    |
+| `corepack pnpm build`             | production build                                      |
+| `corepack pnpm start`             | build済みアプリを起動                                 |
+| `corepack pnpm lint`              | ESLint                                                |
+| `corepack pnpm format`            | Prettierで整形                                        |
+| `corepack pnpm format:check`      | 整形差分の確認                                        |
+| `corepack pnpm typecheck`         | TypeScript型チェック                                  |
+| `corepack pnpm test`              | unit/component test                                   |
+| `corepack pnpm test:e2e`          | ChromiumでE2E smoke test                              |
+| `corepack pnpm check`             | lint、format、typecheck、unit test、buildを順番に実行 |
+| `corepack pnpm db:up`             | PostgreSQLをbackground起動                            |
+| `corepack pnpm db:down`           | PostgreSQL containerを停止・削除（volumeは保持）      |
+| `corepack pnpm db:health`         | PostgreSQLのhealth check                              |
+| `corepack pnpm db:generate`       | Prisma Client生成                                     |
+| `corepack pnpm db:migrate`        | 開発DBへMigration適用                                 |
+| `corepack pnpm db:migrate:deploy` | 既存Migrationを適用                                   |
+| `corepack pnpm db:seed`           | 開発用ダミーデータを冪等投入                          |
+| `corepack pnpm db:studio`         | Prisma Studio                                         |
+| `corepack pnpm auth:bootstrap`    | 初期Userを1回だけ作成                                 |
 
 DB volumeを含むresetはデータを削除するため、自動化していません。必要な場合は対象環境を確認してから明示的に実施してください。
 
@@ -128,21 +131,21 @@ DB volumeを含むresetはデータを削除するため、自動化していま
 unit testとbuildはDBなしで実行できます。
 
 ```bash
-pnpm lint
-pnpm format:check
-pnpm typecheck
-pnpm test
-pnpm build
+corepack pnpm lint
+corepack pnpm format:check
+corepack pnpm typecheck
+corepack pnpm test
+corepack pnpm build
 ```
 
 E2Eを初めて実行する端末では、Chromiumを導入します。
 
 ```bash
-pnpm exec playwright install chromium
-pnpm test:e2e
+corepack pnpm exec playwright install chromium
+corepack pnpm test:e2e
 ```
 
-Playwrightは`pnpm test:e2e`の実行中にNext.js development serverを起動します。
+Playwrightは`corepack pnpm test:e2e`の実行中にNext.js development serverを起動します。
 
 開発サーバーはNext.js 16標準のTurbopackを使用します。production buildは、PostCSSを含むbuildを実行環境に依存せず再現できるよう、現時点ではNext.jsが正式に提供するwebpack modeへ固定しています。
 
@@ -162,7 +165,7 @@ Playwrightは`pnpm test:e2e`の実行中にNext.js development serverを起動�
 ```bash
 docker compose ps
 docker compose logs db
-pnpm db:health
+corepack pnpm db:health
 ```
 
 port `5432`が使用中の場合は、`.env`と`compose.yaml`の接続先を同じ値に調整してください。リポジトリの標準値は`5432`です。
@@ -170,7 +173,7 @@ port `5432`が使用中の場合は、`.env`と`compose.yaml`の接続先を同�
 ### Prisma Clientのimport errorが出る
 
 ```bash
-pnpm db:generate
+corepack pnpm db:generate
 ```
 
 `src/generated/prisma/`は生成物のためGit管理しません。
