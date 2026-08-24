@@ -1,16 +1,9 @@
-import { LogoutButton } from "@/components/auth/logout-button";
+import { AppHeader } from "@/components/layout/app-header";
 
 export default function JobsPage() {
   return (
     <main className="protected-page">
-      <header className="app-header">
-        <span className="app-brand">Agent Job Tracker</span>
-        <nav aria-label="メインナビゲーション">
-          <span aria-current="page">案件管理</span>
-          <span>エージェント会社管理</span>
-        </nav>
-        <LogoutButton />
-      </header>
+      <AppHeader active="jobs" />
       <section className="page-content">
         <h1>案件一覧</h1>
         <div className="empty-state">
