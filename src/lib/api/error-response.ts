@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 
-import type { FieldError } from "@/lib/auth/login-input";
-
 export type ApplicationErrorCode =
+  | "AGENT_COMPANY_NOT_FOUND"
   | "AUTHENTICATION_REQUIRED"
   | "INTERNAL_ERROR"
   | "INVALID_CREDENTIALS"
   | "INVALID_JSON"
+  | "INVALID_PATH_PARAMETER"
+  | "INVALID_QUERY_PARAMETER"
   | "ORIGIN_NOT_ALLOWED"
   | "RATE_LIMITED"
   | "REQUEST_BODY_REQUIRED"
@@ -14,11 +15,17 @@ export type ApplicationErrorCode =
   | "UNSUPPORTED_MEDIA_TYPE"
   | "VALIDATION_ERROR";
 
+export type ApplicationFieldError = {
+  field: string;
+  code: string;
+  message: string;
+};
+
 export function errorResponse(
   status: number,
   code: ApplicationErrorCode,
   message: string,
-  fieldErrors: FieldError[] = [],
+  fieldErrors: ApplicationFieldError[] = [],
   headers?: HeadersInit,
 ) {
   return NextResponse.json({ code, message, fieldErrors }, { status, headers });
