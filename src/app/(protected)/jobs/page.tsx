@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ApplicationStatusControl } from "@/components/applications/application-status-control";
 import { AppHeader } from "@/components/layout/app-header";
 import {
   APPLICATION_STATUS_LABELS,
@@ -109,9 +110,12 @@ async function JobListContent({
                 <td>{job.companyName ?? "未登録"}</td>
                 <td>{job.agentCompany.companyName}</td>
                 <td>
-                  <span className="status-badge">
-                    {APPLICATION_STATUS_LABELS[job.application.status]}
-                  </span>
+                  <ApplicationStatusControl
+                    compact
+                    jobId={job.id}
+                    jobName={job.jobName}
+                    currentStatus={job.application.status}
+                  />
                 </td>
                 <td>{WORK_STYLE_LABELS[job.workStyle]}</td>
                 <td>{formatLocation(job)}</td>
@@ -137,34 +141,41 @@ async function JobListContent({
 
       <div className="mobile-job-list">
         {result.items.map((job) => (
-          <Link
-            aria-label={`${job.jobName}の詳細`}
-            className="job-card"
-            href={`/jobs/${job.id}`}
-            key={job.id}
-          >
-            <span className="job-card-content">
-              <strong>{job.jobName}</strong>
-              <span>
-                {job.companyName ?? "企業名未登録"} ／{" "}
-                {job.agentCompany.companyName}
+          <div className="job-card" key={job.id}>
+            <Link
+              aria-label={`${job.jobName}の詳細`}
+              className="job-card-link"
+              href={`/jobs/${job.id}`}
+            >
+              <span className="job-card-content">
+                <strong>{job.jobName}</strong>
+                <span>
+                  {job.companyName ?? "企業名未登録"} ／{" "}
+                  {job.agentCompany.companyName}
+                </span>
+                <span>
+                  {APPLICATION_STATUS_LABELS[job.application.status]} ｜{" "}
+                  {WORK_STYLE_LABELS[job.workStyle]} ｜ {formatLocation(job)}
+                </span>
+                <span>
+                  単価：
+                  {formatMonthlyRate(
+                    job.monthlyRateMinYen,
+                    job.monthlyRateMaxYen,
+                  )}
+                </span>
               </span>
-              <span>
-                {APPLICATION_STATUS_LABELS[job.application.status]} ｜{" "}
-                {WORK_STYLE_LABELS[job.workStyle]} ｜ {formatLocation(job)}
+              <span className="job-card-arrow" aria-hidden="true">
+                ›
               </span>
-              <span>
-                単価：
-                {formatMonthlyRate(
-                  job.monthlyRateMinYen,
-                  job.monthlyRateMaxYen,
-                )}
-              </span>
-            </span>
-            <span className="job-card-arrow" aria-hidden="true">
-              ›
-            </span>
-          </Link>
+            </Link>
+            <ApplicationStatusControl
+              compact
+              jobId={job.id}
+              jobName={job.jobName}
+              currentStatus={job.application.status}
+            />
+          </div>
         ))}
         <p className="mobile-operation-notice">
           登録はデスクトップで利用できます

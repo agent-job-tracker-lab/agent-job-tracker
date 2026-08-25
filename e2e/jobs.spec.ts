@@ -12,6 +12,8 @@ test.skip(
   "BOOTSTRAP_USER_EMAIL and BOOTSTRAP_USER_PASSWORD are required",
 );
 
+test.describe.configure({ mode: "serial" });
+
 test.afterAll(async () => prisma.$disconnect());
 
 async function login(page: Page) {
@@ -30,6 +32,21 @@ async function expectNoHorizontalClipping(page: Page) {
   expect(dimensions.content).toBe(dimensions.viewport);
 }
 
+async function deleteStatusHistoriesForTest(applicationId: string) {
+  await prisma.$executeRawUnsafe(
+    "ALTER TABLE application_status_histories DISABLE TRIGGER application_status_histories_append_only",
+  );
+  try {
+    await prisma.applicationStatusHistory.deleteMany({
+      where: { applicationId },
+    });
+  } finally {
+    await prisma.$executeRawUnsafe(
+      "ALTER TABLE application_status_histories ENABLE TRIGGER application_status_histories_append_only",
+    );
+  }
+}
+
 test("shows the job list and complete detail with current status", async ({
   page,
 }) => {
@@ -43,8 +60,10 @@ test("shows the job list and complete detail with current status", async ({
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole("cell", { name: "未応募", exact: true }),
-  ).toBeVisible();
+    page
+      .locator(".desktop-job-list")
+      .getByLabel("サンプルWebアプリ開発案件の応募ステータス"),
+  ).toHaveValue("NOT_APPLIED");
   await expect(
     page.getByRole("cell", { name: "ハイブリッド", exact: true }),
   ).toBeVisible();
@@ -65,7 +84,9 @@ test("shows the job list and complete detail with current status", async ({
     page.getByRole("link", { name: /サンプルエージェント株式会社/u }),
   ).toBeVisible();
   await expect(page.getByText("TypeScript、Next.js、PostgreSQL")).toBeVisible();
-  await expect(page.getByText("未応募", { exact: true })).toBeVisible();
+  await expect(
+    page.getByLabel("サンプルWebアプリ開発案件の応募ステータス"),
+  ).toHaveValue("NOT_APPLIED");
   await expectNoHorizontalClipping(page);
 });
 
@@ -160,11 +181,15 @@ test("edits a Job without changing its Application or history", async ({
     await page.getByRole("button", { name: "変更を保存" }).click();
 
     await expect(page).toHaveURL(`/jobs/${job.id}`);
-    await expect(page.getByText(`E2E編集後案件-${suffix}`)).toBeVisible();
+    await expect(
+      page.getByText(`E2E編集後案件-${suffix}`, { exact: true }),
+    ).toBeVisible();
     await expect(page.getByText(replacementCompany.companyName)).toBeVisible();
     await expect(page.getByText("65.25〜80万円")).toBeVisible();
     await expect(page.getByText("TypeScript、React")).toBeVisible();
-    await expect(page.getByText("応募済み", { exact: true })).toBeVisible();
+    await expect(
+      page.getByLabel(`E2E編集後案件-${suffix}の応募ステータス`),
+    ).toHaveValue("APPLIED");
 
     const updated = await prisma.job.findUniqueOrThrow({
       where: { id: job.id },
@@ -188,6 +213,111 @@ test("edits a Job without changing its Application or history", async ({
     await prisma.agentCompany.deleteMany({
       where: { id: { in: [originalCompany.id, replacementCompany.id] } },
     });
+  }
+});
+
+test("updates status from list and mobile detail with auditable history", async ({
+  page,
+}) => {
+  const suffix = Date.now();
+  const user = await prisma.user.findFirstOrThrow({
+    where: { email: email! },
+  });
+  const company = await prisma.agentCompany.create({
+    data: { companyName: `E2Eステータス会社-${suffix}` },
+  });
+  const job = await prisma.job.create({
+    data: {
+      agentCompanyId: company.id,
+      jobName: `E2Eステータス案件-${suffix}`,
+      workStyle: "UNKNOWN",
+      application: { create: { currentStatus: "NOT_APPLIED" } },
+    },
+    include: { application: true },
+  });
+  const application = job.application!;
+
+  try {
+    await login(page);
+    const listUrl = page.url();
+    const listSelect = page
+      .locator(".desktop-job-list")
+      .getByLabel(`${job.jobName}の応募ステータス`);
+    const listForm = listSelect.locator("xpath=ancestor::form");
+    await expect(listSelect).toHaveValue("NOT_APPLIED");
+    await expect(listForm.getByRole("button", { name: "更新" })).toBeDisabled();
+    await listSelect.selectOption("PROPOSING");
+    await listForm.getByRole("button", { name: "更新" }).click();
+
+    await expect(
+      listForm.getByText("応募ステータスを更新しました。"),
+    ).toBeVisible();
+    await expect(listSelect).toHaveValue("PROPOSING");
+    expect(page.url()).toBe(listUrl);
+
+    let saved = await prisma.application.findUniqueOrThrow({
+      where: { id: application.id },
+      include: { statusHistories: true },
+    });
+    expect(saved.currentStatus).toBe("PROPOSING");
+    expect(saved.statusHistories).toHaveLength(1);
+    expect(saved.statusHistories[0]).toMatchObject({
+      previousStatus: "NOT_APPLIED",
+      newStatus: "PROPOSING",
+      changedByUserId: user.id,
+    });
+    expect(saved.statusHistories[0]?.changedAt).toEqual(saved.statusUpdatedAt);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/jobs/${job.id}`);
+    const detailUrl = page.url();
+    const detailSelect = page.getByLabel(`${job.jobName}の応募ステータス`);
+    const detailForm = detailSelect.locator("xpath=ancestor::form");
+    await detailSelect.selectOption("APPLIED");
+    await detailForm.getByRole("button", { name: "更新" }).click();
+    await expect(detailSelect).toHaveValue("APPLIED");
+    await expect(
+      detailForm.getByText("応募ステータスを更新しました。"),
+    ).toBeVisible();
+    expect(page.url()).toBe(detailUrl);
+    await expectNoHorizontalClipping(page);
+
+    saved = await prisma.application.findUniqueOrThrow({
+      where: { id: application.id },
+      include: { statusHistories: { orderBy: { changedAt: "asc" } } },
+    });
+    expect(saved.currentStatus).toBe("APPLIED");
+    expect(saved.statusHistories).toHaveLength(2);
+    expect(saved.statusHistories[1]).toMatchObject({
+      previousStatus: "PROPOSING",
+      newStatus: "APPLIED",
+      changedByUserId: user.id,
+    });
+    expect(saved.statusHistories[1]?.changedAt).toEqual(saved.statusUpdatedAt);
+
+    const concurrent = await Promise.all([
+      page.request.patch(`/api/jobs/${job.id}/application/status`, {
+        headers: { origin: "http://localhost:3000" },
+        data: { status: "REJECTED" },
+      }),
+      page.request.patch(`/api/jobs/${job.id}/application/status`, {
+        headers: { origin: "http://localhost:3000" },
+        data: { status: "REJECTED" },
+      }),
+    ]);
+    expect(concurrent.map((response) => response.status()).sort()).toEqual([
+      200, 409,
+    ]);
+    expect(
+      await prisma.applicationStatusHistory.count({
+        where: { applicationId: application.id },
+      }),
+    ).toBe(3);
+  } finally {
+    await deleteStatusHistoriesForTest(application.id);
+    await prisma.application.delete({ where: { id: application.id } });
+    await prisma.job.delete({ where: { id: job.id } });
+    await prisma.agentCompany.delete({ where: { id: company.id } });
   }
 });
 
@@ -225,11 +355,13 @@ test("creates a Job and one initial Application in the same operation", async ({
     await page.getByRole("button", { name: "登録する" }).click();
 
     await expect(page.getByRole("heading", { name: "案件詳細" })).toBeVisible();
-    await expect(page.getByText(jobName)).toBeVisible();
+    await expect(page.getByText(jobName, { exact: true })).toBeVisible();
     await expect(page.getByText("60.25〜80万円")).toBeVisible();
     await expect(page.getByText("東京都新宿区（新宿駅）")).toBeVisible();
     await expect(page.getByText("TypeScript、Next.js")).toBeVisible();
-    await expect(page.getByText("未応募", { exact: true })).toBeVisible();
+    await expect(page.getByLabel(`${jobName}の応募ステータス`)).toHaveValue(
+      "NOT_APPLIED",
+    );
     await expectNoHorizontalClipping(page);
 
     const job = await prisma.job.findFirstOrThrow({
