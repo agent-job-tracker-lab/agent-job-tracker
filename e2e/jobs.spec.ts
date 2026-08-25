@@ -89,12 +89,106 @@ test("uses readable cards and detail sections on mobile", async ({ page }) => {
   ).toBeVisible();
   await expectNoHorizontalClipping(page);
 
+  await page
+    .getByRole("link", { name: "編集する" })
+    .count()
+    .then((count) => expect(count).toBe(0));
+  await page.goto(`${page.url()}/edit`);
+  await expect(
+    page.getByRole("heading", { name: "編集はデスクトップで利用できます" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "変更を保存" })).toHaveCount(0);
+  await expectNoHorizontalClipping(page);
+
   await page.goto("/jobs/new");
   await expect(
     page.getByRole("heading", { name: "登録はデスクトップで利用できます" }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "登録する" })).toHaveCount(0);
   await expectNoHorizontalClipping(page);
+});
+
+test("edits a Job without changing its Application or history", async ({
+  page,
+}) => {
+  const suffix = Date.now();
+  const originalCompany = await prisma.agentCompany.create({
+    data: { companyName: `E2E編集元会社-${suffix}` },
+  });
+  const replacementCompany = await prisma.agentCompany.create({
+    data: { companyName: `E2E編集先会社-${suffix}` },
+  });
+  const job = await prisma.job.create({
+    data: {
+      agentCompanyId: originalCompany.id,
+      jobName: `E2E編集前案件-${suffix}`,
+      companyName: "編集前企業",
+      monthlyRateMinYen: 600_000,
+      monthlyRateMaxYen: 800_000,
+      workStyle: "HYBRID",
+      technologies: ["TypeScript", "Next.js"],
+      processPhases: ["設計", "実装"],
+      application: {
+        create: {
+          currentStatus: "APPLIED",
+        },
+      },
+    },
+    include: { application: { include: { statusHistories: true } } },
+  });
+  const applicationBefore = job.application!;
+
+  try {
+    await login(page);
+    await page.goto(`/jobs/${job.id}`);
+    await page.getByRole("link", { name: "編集する" }).click();
+
+    await expect(page.getByRole("heading", { name: "案件編集" })).toBeVisible();
+    await expect(page.getByLabel(/^案件名/u)).toHaveValue(job.jobName);
+    await expect(page.getByLabel("勤務形態必須")).toHaveValue("HYBRID");
+    await expect(page.getByLabel("単価下限（万円）")).toHaveValue("60");
+    await expect(page.getByLabel(/技術/u)).toHaveValue("TypeScript\nNext.js");
+    await expectNoHorizontalClipping(page);
+
+    await page.getByLabel(/^案件名/u).fill(`E2E編集後案件-${suffix}`);
+    await page
+      .getByLabel(/^紹介元エージェント会社/u)
+      .selectOption(replacementCompany.id);
+    await page.getByLabel("企業名").fill("");
+    await page.getByLabel("単価下限（万円）").fill("65.25");
+    await page.getByLabel("技術（1行に1件）").fill("TypeScript\nReact");
+    await page.getByRole("button", { name: "変更を保存" }).click();
+
+    await expect(page).toHaveURL(`/jobs/${job.id}`);
+    await expect(page.getByText(`E2E編集後案件-${suffix}`)).toBeVisible();
+    await expect(page.getByText(replacementCompany.companyName)).toBeVisible();
+    await expect(page.getByText("65.25〜80万円")).toBeVisible();
+    await expect(page.getByText("TypeScript、React")).toBeVisible();
+    await expect(page.getByText("応募済み", { exact: true })).toBeVisible();
+
+    const updated = await prisma.job.findUniqueOrThrow({
+      where: { id: job.id },
+      include: { application: { include: { statusHistories: true } } },
+    });
+    expect(updated.agentCompanyId).toBe(replacementCompany.id);
+    expect(updated.companyName).toBeNull();
+    expect(updated.monthlyRateMinYen).toBe(652_500);
+    expect(updated.application).toMatchObject({
+      id: applicationBefore.id,
+      currentStatus: applicationBefore.currentStatus,
+      statusUpdatedAt: applicationBefore.statusUpdatedAt,
+      updatedAt: applicationBefore.updatedAt,
+    });
+    expect(updated.application?.statusHistories).toEqual(
+      applicationBefore.statusHistories,
+    );
+  } finally {
+    await prisma.application.delete({ where: { jobId: job.id } });
+    await prisma.job.delete({ where: { id: job.id } });
+    await prisma.agentCompany.deleteMany({
+      where: { id: { in: [originalCompany.id, replacementCompany.id] } },
+    });
+  }
 });
 
 test("creates a Job and one initial Application in the same operation", async ({

@@ -1,6 +1,7 @@
 const mocks = vi.hoisted(() => ({
   queryRaw: vi.fn(),
   create: vi.fn(),
+  update: vi.fn(),
   transaction: vi.fn(),
 }));
 
@@ -11,6 +12,8 @@ vi.mock("@/lib/db", () => ({
 import {
   AgentCompanyUnavailableError,
   createJobWithApplication,
+  JobUnavailableError,
+  updateJob,
 } from "./mutations";
 import type { CreateJobInput } from "./input";
 
@@ -41,7 +44,7 @@ describe("createJobWithApplication", () => {
       (operation: (transaction: unknown) => unknown) =>
         operation({
           $queryRaw: mocks.queryRaw,
-          job: { create: mocks.create },
+          job: { create: mocks.create, update: mocks.update },
         }),
     );
   });
@@ -112,5 +115,71 @@ describe("createJobWithApplication", () => {
     await expect(createJobWithApplication(input)).rejects.toThrow(
       "application create failed",
     );
+  });
+});
+
+describe("updateJob", () => {
+  const jobId = "123e4567-e89b-42d3-a456-426614174001";
+  const application = {
+    id: "application-id",
+    currentStatus: "INTERVIEWING",
+    statusUpdatedAt: new Date("2026-08-25T02:00:00.000Z"),
+  };
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mocks.transaction.mockImplementation(
+      (operation: (transaction: unknown) => unknown) =>
+        operation({
+          $queryRaw: mocks.queryRaw,
+          job: { create: mocks.create, update: mocks.update },
+        }),
+    );
+  });
+
+  it("locks the job and company and updates only Job fields", async () => {
+    mocks.queryRaw
+      .mockResolvedValueOnce([{ id: jobId, deleted_at: null }])
+      .mockResolvedValueOnce([{ id: input.agentCompanyId, deleted_at: null }]);
+    mocks.update.mockResolvedValue({
+      id: jobId,
+      ...input,
+      agentCompany: { id: input.agentCompanyId, companyName: "紹介元" },
+      application,
+    });
+
+    await expect(updateJob(jobId, input)).resolves.toMatchObject({
+      id: jobId,
+      application: { id: "application-id", status: "INTERVIEWING" },
+    });
+    expect(mocks.queryRaw).toHaveBeenCalledTimes(2);
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: jobId },
+        data: expect.not.objectContaining({ application: expect.anything() }),
+      }),
+    );
+  });
+
+  it("does not update a missing or deleted job", async () => {
+    mocks.queryRaw.mockResolvedValueOnce([]);
+
+    await expect(updateJob(jobId, input)).rejects.toBeInstanceOf(
+      JobUnavailableError,
+    );
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("does not update when the selected company is unavailable", async () => {
+    mocks.queryRaw
+      .mockResolvedValueOnce([{ id: jobId, deleted_at: null }])
+      .mockResolvedValueOnce([
+        { id: input.agentCompanyId, deleted_at: new Date() },
+      ]);
+
+    await expect(updateJob(jobId, input)).rejects.toBeInstanceOf(
+      AgentCompanyUnavailableError,
+    );
+    expect(mocks.update).not.toHaveBeenCalled();
   });
 });

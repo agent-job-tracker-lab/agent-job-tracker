@@ -1,6 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { INITIAL_JOB_FORM_VALUES } from "@/features/jobs/input";
+
 import { JobForm } from "./job-form";
 
 const push = vi.fn();
@@ -107,5 +109,49 @@ describe("JobForm", () => {
     ).toBeVisible();
     expect(screen.getByLabelText(/案件名/u)).toHaveValue("保持される案件");
     expect(screen.getByRole("button", { name: "登録する" })).toBeEnabled();
+  });
+
+  it("shows initial values and updates an existing job", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ id: "job-id" }), { status: 200 }),
+    );
+    const user = userEvent.setup();
+    render(
+      <JobForm
+        mode="edit"
+        jobId="job-id"
+        companies={companies}
+        initialValues={{
+          ...INITIAL_JOB_FORM_VALUES,
+          jobName: "編集前案件",
+          agentCompanyId: companies[0]!.id,
+          workStyle: "HYBRID",
+          technologies: "TypeScript\nNext.js",
+        }}
+      />,
+    );
+
+    expect(screen.getByLabelText(/案件名/u)).toHaveValue("編集前案件");
+    expect(screen.getByLabelText("勤務形態必須")).toHaveValue("HYBRID");
+    expect(screen.getByLabelText(/技術/u)).toHaveValue("TypeScript\nNext.js");
+    expect(screen.getByRole("link", { name: "キャンセル" })).toHaveAttribute(
+      "href",
+      "/jobs/job-id",
+    );
+
+    await user.clear(screen.getByLabelText(/案件名/u));
+    await user.type(screen.getByLabelText(/案件名/u), "編集後案件");
+    await user.click(screen.getByRole("button", { name: "変更を保存" }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/jobs/job-id"));
+    const request = vi.mocked(globalThis.fetch).mock.calls[0];
+    expect(request?.[0]).toBe("/api/jobs/job-id");
+    expect(request?.[1]?.method).toBe("PATCH");
+    expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({
+      jobName: "編集後案件",
+      agentCompanyId: companies[0]!.id,
+      workStyle: "HYBRID",
+      technologies: ["TypeScript", "Next.js"],
+    });
   });
 });
