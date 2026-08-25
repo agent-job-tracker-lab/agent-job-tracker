@@ -48,6 +48,20 @@ describe("createAgentCompanyRequestSchema", () => {
     ]);
   });
 
+  it("distinguishes a non-string company name from a missing value", () => {
+    const result = createAgentCompanyRequestSchema.safeParse(
+      validInput({ companyName: 123 }),
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+
+    expect(toAgentCompanyFieldErrors(result.error)).toContainEqual({
+      field: "companyName",
+      code: "INVALID_FORMAT",
+      message: "形式を確認してください。",
+    });
+  });
+
   it("counts Unicode code points instead of UTF-16 code units", () => {
     expect(
       createAgentCompanyRequestSchema.safeParse(

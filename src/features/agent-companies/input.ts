@@ -7,7 +7,12 @@ export const AGENT_COMPANY_STATUSES = ["ACTIVE", "ON_HOLD", "ENDED"] as const;
 export type AgentCompanyStatusInput = (typeof AGENT_COMPANY_STATUSES)[number];
 
 const requiredCompanyNameSchema = z
-  .string({ error: "入力してください。" })
+  .string({
+    error: (issue) =>
+      issue.input === undefined || issue.input === null
+        ? "入力してください。"
+        : "形式を確認してください。",
+  })
   .transform(normalizeBusinessString)
   .pipe(
     z
