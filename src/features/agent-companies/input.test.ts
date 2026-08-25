@@ -1,6 +1,7 @@
 import {
   createAgentCompanyRequestSchema,
   toAgentCompanyFieldErrors,
+  updateAgentCompanyRequestSchema,
 } from "./input";
 
 function validInput(overrides: Record<string, unknown> = {}) {
@@ -127,6 +128,49 @@ describe("createAgentCompanyRequestSchema", () => {
         code: "UNKNOWN_FIELD",
         message: "使用できない項目が含まれています。",
       },
+    ]);
+  });
+});
+
+describe("updateAgentCompanyRequestSchema", () => {
+  it("preserves omitted fields and clears an optional blank field", () => {
+    expect(
+      updateAgentCompanyRequestSchema.parse({ companyName: "  更新会社  " }),
+    ).toEqual({ companyName: "更新会社" });
+    expect(
+      updateAgentCompanyRequestSchema.parse({ contactName: "  " }),
+    ).toEqual({ contactName: null });
+  });
+
+  it("rejects an empty update", () => {
+    const result = updateAgentCompanyRequestSchema.safeParse({});
+    expect(result.success).toBe(false);
+    if (result.success) return;
+
+    expect(toAgentCompanyFieldErrors(result.error)).toEqual([
+      {
+        field: "body",
+        code: "EMPTY_UPDATE",
+        message: "変更する項目を入力してください。",
+      },
+    ]);
+  });
+
+  it("does not allow required values to be cleared", () => {
+    const result = updateAgentCompanyRequestSchema.safeParse({
+      companyName: "",
+      status: null,
+    });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+
+    expect(toAgentCompanyFieldErrors(result.error)).toEqual([
+      {
+        field: "companyName",
+        code: "REQUIRED",
+        message: "入力してください。",
+      },
+      { field: "status", code: "REQUIRED", message: "入力してください。" },
     ]);
   });
 });

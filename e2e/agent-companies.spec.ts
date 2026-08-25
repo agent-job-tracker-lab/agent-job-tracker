@@ -93,6 +93,13 @@ test("uses cards and keeps read-only actions visible on mobile", async ({
   ).toBeVisible();
   await expectNoHorizontalClipping(page);
 
+  await page.goto(`${new URL(page.url()).pathname}/edit`);
+  await expect(
+    page.getByRole("heading", { name: "編集はデスクトップで利用できます" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "変更を保存" })).toHaveCount(0);
+  await expectNoHorizontalClipping(page);
+
   await page.goto("/agent-companies/new");
   await expect(
     page.getByRole("heading", { name: "登録はデスクトップで利用できます" }),
@@ -152,5 +159,61 @@ test("creates companies with the same name and keeps optional values", async ({
       .toBe(2);
   } finally {
     await prisma.agentCompany.deleteMany({ where: { companyName } });
+  }
+});
+
+test("edits an existing company and allows a duplicate company name", async ({
+  page,
+}) => {
+  const company = await prisma.agentCompany.create({
+    data: {
+      companyName: `E2E編集前会社-${Date.now()}`,
+      contactName: "編集前担当者",
+      contactDetails: "before@example.test",
+      characteristics: "編集前の特徴",
+      lastContactDate: new Date("2026-08-24T00:00:00.000Z"),
+      status: "ON_HOLD",
+    },
+  });
+
+  try {
+    await login(page);
+    await page.goto(`/agent-companies/${company.id}`);
+    await page.getByRole("link", { name: "編集する" }).click();
+
+    await expect(
+      page.getByRole("heading", { name: "エージェント会社編集" }),
+    ).toBeVisible();
+    await expect(page.getByLabel(/会社名/u)).toHaveValue(company.companyName);
+    await expect(page.getByLabel(/担当者名/u)).toHaveValue("編集前担当者");
+    await expect(page.getByLabel(/関係状態/u)).toHaveValue("ON_HOLD");
+
+    await page.getByLabel(/会社名/u).fill("サンプルエージェント株式会社");
+    await page.getByLabel(/担当者名/u).fill("");
+    await page.getByLabel("特徴").fill("編集後の特徴");
+    await page.getByLabel(/関係状態/u).selectOption("ENDED");
+    await page.getByRole("button", { name: "変更を保存" }).click();
+
+    await expect(page).toHaveURL(`/agent-companies/${company.id}`);
+    await expect(page.getByText("サンプルエージェント株式会社")).toBeVisible();
+    await expect(page.getByText("編集後の特徴")).toBeVisible();
+    await expect(page.getByText("終了", { exact: true })).toBeVisible();
+    await expect(page.getByText("未登録", { exact: true })).toBeVisible();
+    await expectNoHorizontalClipping(page);
+
+    await expect
+      .poll(() =>
+        prisma.agentCompany.findUnique({
+          where: { id: company.id },
+          select: { companyName: true, contactName: true, status: true },
+        }),
+      )
+      .toEqual({
+        companyName: "サンプルエージェント株式会社",
+        contactName: null,
+        status: "ENDED",
+      });
+  } finally {
+    await prisma.agentCompany.delete({ where: { id: company.id } });
   }
 });

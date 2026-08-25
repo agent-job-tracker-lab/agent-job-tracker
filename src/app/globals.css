@@ -388,6 +388,10 @@ button:disabled {
   gap: 20px;
 }
 
+.desktop-edit-link {
+  align-self: flex-end;
+}
+
 .back-link {
   display: inline-block;
   margin-bottom: 12px;
@@ -449,6 +453,10 @@ button:disabled {
 }
 
 .mobile-create-unavailable {
+  display: none;
+}
+
+.mobile-edit-unavailable {
   display: none;
 }
 
@@ -677,11 +685,14 @@ button:disabled {
   }
 
   .desktop-create-link,
-  .desktop-create-content {
+  .desktop-create-content,
+  .desktop-edit-content,
+  .desktop-edit-link {
     display: none;
   }
 
-  .mobile-create-unavailable {
+  .mobile-create-unavailable,
+  .mobile-edit-unavailable {
     display: block;
   }
 

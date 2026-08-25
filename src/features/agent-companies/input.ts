@@ -74,10 +74,26 @@ export const createAgentCompanyRequestSchema = z
   })
   .strict();
 
+export const updateAgentCompanyRequestSchema = createAgentCompanyRequestSchema
+  .partial()
+  .superRefine((value, context) => {
+    if (Object.keys(value).length === 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["body"],
+        message: "変更する項目を入力してください。",
+      });
+    }
+  });
+
 export const agentCompanyFormSchema = createAgentCompanyRequestSchema;
 
 export type AgentCompanyInput = z.output<
   typeof createAgentCompanyRequestSchema
+>;
+
+export type UpdateAgentCompanyInput = z.output<
+  typeof updateAgentCompanyRequestSchema
 >;
 
 export function toAgentCompanyFieldErrors(
@@ -111,7 +127,9 @@ export function toAgentCompanyFieldErrors(
     if (errors.has(field)) continue;
 
     const message =
-      field === "body" ? "入力内容の形式を確認してください。" : issue.message;
+      field === "body" && issue.message !== "変更する項目を入力してください。"
+        ? "入力内容の形式を確認してください。"
+        : issue.message;
     errors.set(field, {
       field,
       code: fieldErrorCode(message),
@@ -209,5 +227,6 @@ function fieldErrorCode(message: string) {
   if (message === "日付を正しく入力してください。") return "INVALID_DATE";
   if (message === "今日以前の日付を入力してください。") return "FUTURE_DATE";
   if (message === "選択肢を確認してください。") return "INVALID_ENUM";
+  if (message === "変更する項目を入力してください。") return "EMPTY_UPDATE";
   return "INVALID_FORMAT";
 }

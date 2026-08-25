@@ -32,6 +32,12 @@ export default async function AgentCompanyDetailPage({ params }: PageProps) {
             </Link>
             <h1>エージェント会社詳細</h1>
           </div>
+          <Link
+            className="secondary-button desktop-edit-link"
+            href={`/agent-companies/${company.id}/edit`}
+          >
+            編集する
+          </Link>
         </div>
 
         <div className="company-detail-grid">
