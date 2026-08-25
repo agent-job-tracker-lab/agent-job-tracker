@@ -25,12 +25,16 @@ body {
 
 button,
 input,
+select,
+textarea,
 summary {
   font: inherit;
 }
 
 button:focus-visible,
 input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
 a:focus-visible,
 summary:focus-visible {
   outline: 3px solid #2563eb;
@@ -120,6 +124,18 @@ summary:focus-visible {
   color: white;
   font-weight: 700;
   cursor: pointer;
+}
+
+.primary-link {
+  display: inline-grid;
+  min-height: 44px;
+  place-items: center;
+  padding: 10px 16px;
+  border-radius: 3px;
+  background: var(--primary);
+  color: white;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 button:disabled {
@@ -343,6 +359,7 @@ button:disabled {
   color: inherit;
   cursor: pointer;
   font-weight: 700;
+  text-decoration: none;
 }
 
 .result-count {
@@ -429,6 +446,136 @@ button:disabled {
 
 .muted-text {
   color: var(--muted);
+}
+
+.mobile-create-unavailable {
+  display: none;
+}
+
+.company-form {
+  margin-top: 24px;
+  padding: 28px 30px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: white;
+}
+
+.company-form fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.company-form legend {
+  margin-bottom: 24px;
+  padding: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.company-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px 32px;
+}
+
+.company-form-field {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.company-form-field-wide {
+  grid-column: 1 / -1;
+}
+
+.company-form-field label {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.required-label {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #f3f4f6;
+  font-size: 11px;
+}
+
+.company-form-field input,
+.company-form-field select,
+.company-form-field textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: white;
+  color: var(--foreground);
+}
+
+.company-form-field textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.company-form-field [aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.required-note {
+  margin: 20px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.form-error-summary {
+  margin: 0 0 24px;
+  padding: 16px 18px;
+  border: 1px solid #fecaca;
+  border-radius: 4px;
+  background: #fef2f2;
+}
+
+.form-error-summary p {
+  margin: 0;
+  font-weight: 700;
+}
+
+.form-error-summary ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.form-error-summary a {
+  color: var(--danger);
+}
+
+.company-form-error {
+  min-height: 24px;
+  margin: 18px 0 0;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.company-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.company-form-actions .primary-button {
+  min-width: 128px;
+  margin-top: 0;
+}
+
+.company-form-actions .secondary-button {
+  min-width: 110px;
+  text-align: center;
 }
 
 @media (max-width: 700px) {
@@ -527,6 +674,15 @@ button:disabled {
 
   .company-page h1 {
     font-size: 26px;
+  }
+
+  .desktop-create-link,
+  .desktop-create-content {
+    display: none;
+  }
+
+  .mobile-create-unavailable {
+    display: block;
   }
 
   .desktop-company-list {
