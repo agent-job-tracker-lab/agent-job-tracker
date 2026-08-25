@@ -346,6 +346,70 @@ button:disabled {
   white-space: nowrap;
 }
 
+.application-status-control {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.application-status-control label {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.application-status-fields {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.application-status-fields select {
+  min-width: 0;
+  min-height: 44px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: white;
+  color: var(--foreground);
+}
+
+.application-status-fields .primary-button {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.application-status-control-compact {
+  min-width: 170px;
+  margin-top: 0;
+}
+
+.application-status-control-compact .application-status-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.application-status-control-compact .application-status-fields select,
+.application-status-control-compact .application-status-fields .primary-button {
+  min-height: 36px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.application-status-feedback {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.application-status-feedback-success {
+  color: #166534;
+}
+
+.application-status-feedback-error {
+  color: var(--danger);
+}
+
 .state-panel,
 .loading-panel {
   margin-top: 24px;
@@ -791,16 +855,28 @@ button:disabled {
   }
 
   .job-card {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 16px;
+    display: block;
     min-height: 148px;
     padding: 18px;
     border: 1px solid var(--border);
     border-radius: 7px;
     background: white;
     text-decoration: none;
+  }
+
+  .job-card-link {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    color: var(--foreground);
+    text-decoration: none;
+  }
+
+  .job-card .application-status-control {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-light);
   }
 
   .company-card-content {

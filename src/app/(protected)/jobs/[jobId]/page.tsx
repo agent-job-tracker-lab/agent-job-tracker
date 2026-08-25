@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { ApplicationStatusControl } from "@/components/applications/application-status-control";
 import { AppHeader } from "@/components/layout/app-header";
 import {
   APPLICATION_STATUS_LABELS,
@@ -127,6 +128,11 @@ export default async function JobDetailPage({ params }: PageProps) {
                 value={formatStatusUpdatedAt(job.application.statusUpdatedAt)}
               />
             </dl>
+            <ApplicationStatusControl
+              jobId={job.id}
+              jobName={job.jobName}
+              currentStatus={job.application.status}
+            />
           </DetailSection>
         </div>
 

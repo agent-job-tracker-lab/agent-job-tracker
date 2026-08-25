@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 export type ApplicationErrorCode =
   | "AGENT_COMPANY_NOT_FOUND"
+  | "APPLICATION_NOT_FOUND"
+  | "APPLICATION_STATUS_UNCHANGED"
   | "AUTHENTICATION_REQUIRED"
   | "INTERNAL_ERROR"
   | "INVALID_CREDENTIALS"
