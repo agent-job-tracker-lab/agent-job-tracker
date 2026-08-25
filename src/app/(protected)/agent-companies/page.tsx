@@ -1,11 +1,11 @@
 import Link from "next/link";
 
 import { AppHeader } from "@/components/layout/app-header";
-import { parsePagination } from "@/features/agent-companies/pagination";
 import {
   AGENT_COMPANY_STATUS_LABELS,
   listAgentCompanies,
 } from "@/features/agent-companies/queries";
+import { parsePagination } from "@/lib/api/pagination";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
