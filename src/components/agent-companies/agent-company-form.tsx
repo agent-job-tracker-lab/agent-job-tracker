@@ -10,7 +10,7 @@ import {
   type AgentCompanyStatusInput,
 } from "@/features/agent-companies/input";
 
-type FormValues = {
+export type AgentCompanyFormValues = {
   companyName: string;
   contactName: string;
   contactDetails: string;
@@ -25,9 +25,9 @@ type ApiError = {
   fieldErrors?: Array<{ field: string; code: string; message: string }>;
 };
 
-type CreatedCompany = { id: string };
+type SavedCompany = { id: string };
 
-const INITIAL_VALUES: FormValues = {
+const INITIAL_VALUES: AgentCompanyFormValues = {
   companyName: "",
   contactName: "",
   contactDetails: "",
@@ -36,16 +36,27 @@ const INITIAL_VALUES: FormValues = {
   status: "ACTIVE",
 };
 
-export function AgentCompanyForm() {
+export function AgentCompanyForm({
+  mode = "create",
+  companyId,
+  initialValues,
+}: {
+  mode?: "create" | "edit";
+  companyId?: string;
+  initialValues?: AgentCompanyFormValues;
+}) {
   const router = useRouter();
-  const [values, setValues] = useState(INITIAL_VALUES);
+  const [values, setValues] = useState(initialValues ?? INITIAL_VALUES);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function updateValue<Field extends keyof FormValues>(
+  const isEdit = mode === "edit";
+  const detailHref = companyId ? `/agent-companies/${companyId}` : null;
+
+  function updateValue<Field extends keyof AgentCompanyFormValues>(
     field: Field,
-    value: FormValues[Field],
+    value: AgentCompanyFormValues[Field],
   ) {
     setValues((current) => ({ ...current, [field]: value }));
     setFieldErrors((current) => {
@@ -72,14 +83,19 @@ export function AgentCompanyForm() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/agent-companies", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(parsed.data),
-      });
+      const response = await fetch(
+        isEdit && companyId
+          ? `/api/agent-companies/${companyId}`
+          : "/api/agent-companies",
+        {
+          method: isEdit ? "PATCH" : "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(parsed.data),
+        },
+      );
 
       if (response.ok) {
-        const company = (await response.json()) as CreatedCompany;
+        const company = (await response.json()) as SavedCompany;
         router.push(`/agent-companies/${company.id}`);
         router.refresh();
         return;
@@ -97,7 +113,7 @@ export function AgentCompanyForm() {
       } else {
         setFormError(
           error.message ??
-            "登録に失敗しました。入力内容を保ったまま、もう一度お試しください。",
+            `${isEdit ? "更新" : "登録"}に失敗しました。入力内容を保ったまま、もう一度お試しください。`,
         );
       }
     } catch {
@@ -275,11 +291,20 @@ export function AgentCompanyForm() {
         ) : null}
 
         <div className="company-form-actions">
-          <Link className="secondary-button" href="/agent-companies">
+          <Link
+            className="secondary-button"
+            href={isEdit && detailHref ? detailHref : "/agent-companies"}
+          >
             キャンセル
           </Link>
           <button className="primary-button" type="submit">
-            {isSubmitting ? "登録中…" : "登録する"}
+            {isSubmitting
+              ? isEdit
+                ? "更新中…"
+                : "登録中…"
+              : isEdit
+                ? "変更を保存"
+                : "登録する"}
           </button>
         </div>
       </fieldset>

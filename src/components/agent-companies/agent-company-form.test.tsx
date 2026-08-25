@@ -96,4 +96,52 @@ describe("AgentCompanyForm", () => {
     expect(companyName).toHaveValue("保持される会社");
     expect(screen.getByRole("button", { name: "登録する" })).toBeEnabled();
   });
+
+  it("loads edit values and updates the existing company", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ id: "company-id" }), { status: 200 }),
+    );
+    const user = userEvent.setup();
+    render(
+      <AgentCompanyForm
+        mode="edit"
+        companyId="company-id"
+        initialValues={{
+          companyName: "更新前会社",
+          contactName: "更新前担当者",
+          contactDetails: "before@example.test",
+          characteristics: "更新前の特徴",
+          lastContactDate: "2026-08-24",
+          status: "ON_HOLD",
+        }}
+      />,
+    );
+
+    expect(screen.getByLabelText(/会社名/u)).toHaveValue("更新前会社");
+    expect(screen.getByLabelText(/関係状態/u)).toHaveValue("ON_HOLD");
+
+    await user.clear(screen.getByLabelText(/会社名/u));
+    await user.type(screen.getByLabelText(/会社名/u), "更新後会社");
+    await user.clear(screen.getByLabelText(/担当者名/u));
+    await user.click(screen.getByRole("button", { name: "変更を保存" }));
+
+    await waitFor(() =>
+      expect(push).toHaveBeenCalledWith("/agent-companies/company-id"),
+    );
+    expect(refresh).toHaveBeenCalled();
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "/api/agent-companies/company-id",
+      expect.objectContaining({ method: "PATCH" }),
+    );
+    const request = vi.mocked(globalThis.fetch).mock.calls[0];
+    expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({
+      companyName: "更新後会社",
+      contactName: null,
+      status: "ON_HOLD",
+    });
+    expect(screen.getByRole("link", { name: "キャンセル" })).toHaveAttribute(
+      "href",
+      "/agent-companies/company-id",
+    );
+  });
 });
