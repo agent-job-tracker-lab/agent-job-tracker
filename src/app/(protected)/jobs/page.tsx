@@ -22,7 +22,12 @@ export default async function JobsPage({ searchParams }: PageProps) {
     <main className="protected-page">
       <AppHeader active="jobs" />
       <section className="page-content job-page">
-        <h1>案件一覧</h1>
+        <div className="page-heading-row">
+          <h1>案件一覧</h1>
+          <Link className="primary-link desktop-create-link" href="/jobs/new">
+            案件を登録
+          </Link>
+        </div>
         {!pagination.success ? (
           <div className="state-panel state-panel-error" role="alert">
             <h2>一覧を表示できません</h2>
@@ -69,7 +74,11 @@ async function JobListContent({
           <Link className="secondary-link" href="/jobs">
             最初のページを表示
           </Link>
-        ) : null}
+        ) : (
+          <Link className="primary-link desktop-create-link" href="/jobs/new">
+            案件を登録
+          </Link>
+        )}
       </div>
     );
   }
