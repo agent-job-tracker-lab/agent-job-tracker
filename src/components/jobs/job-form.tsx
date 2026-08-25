@@ -19,16 +19,31 @@ import {
 
 type AgentCompanyOption = { id: string; companyName: string };
 type ApiError = {
+  code?: string;
   message?: string;
   fieldErrors?: Array<{ field: string; message: string }>;
 };
 
-export function JobForm({ companies }: { companies: AgentCompanyOption[] }) {
+export function JobForm({
+  companies,
+  mode = "create",
+  jobId,
+  initialValues,
+}: {
+  companies: AgentCompanyOption[];
+  mode?: "create" | "edit";
+  jobId?: string;
+  initialValues?: JobFormValues;
+}) {
   const router = useRouter();
-  const [values, setValues] = useState(INITIAL_JOB_FORM_VALUES);
+  const [values, setValues] = useState(
+    initialValues ?? INITIAL_JOB_FORM_VALUES,
+  );
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isEdit = mode === "edit";
+  const detailHref = jobId ? `/jobs/${jobId}` : null;
 
   function updateValue<Field extends keyof JobFormValues>(
     field: Field,
@@ -57,11 +72,14 @@ export function JobForm({ companies }: { companies: AgentCompanyOption[] }) {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/jobs", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(parsed.data),
-      });
+      const response = await fetch(
+        isEdit && jobId ? `/api/jobs/${jobId}` : "/api/jobs",
+        {
+          method: isEdit ? "PATCH" : "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(parsed.data),
+        },
+      );
       if (response.ok) {
         const job = (await response.json()) as { id: string };
         router.push(`/jobs/${job.id}`);
@@ -89,7 +107,7 @@ export function JobForm({ companies }: { companies: AgentCompanyOption[] }) {
       } else {
         setFormError(
           error.message ??
-            "登録に失敗しました。入力内容を保ったまま、もう一度お試しください。",
+            `${isEdit ? "更新" : "登録"}に失敗しました。入力内容を保ったまま、もう一度お試しください。`,
         );
       }
     } catch {
@@ -397,11 +415,20 @@ export function JobForm({ companies }: { companies: AgentCompanyOption[] }) {
           </p>
         ) : null}
         <div className="company-form-actions">
-          <Link className="secondary-button" href="/jobs">
+          <Link
+            className="secondary-button"
+            href={isEdit && detailHref ? detailHref : "/jobs"}
+          >
             キャンセル
           </Link>
           <button className="primary-button" type="submit">
-            {isSubmitting ? "登録中…" : "登録する"}
+            {isSubmitting
+              ? isEdit
+                ? "更新中…"
+                : "登録中…"
+              : isEdit
+                ? "変更を保存"
+                : "登録する"}
           </button>
         </div>
       </fieldset>

@@ -27,10 +27,20 @@ export default async function JobDetailPage({ params }: PageProps) {
     <main className="protected-page">
       <AppHeader active="jobs" />
       <section className="page-content job-page">
-        <Link className="back-link" href="/jobs">
-          ‹ 案件一覧
-        </Link>
-        <h1>案件詳細</h1>
+        <div className="page-heading-row">
+          <div>
+            <Link className="back-link" href="/jobs">
+              ‹ 案件一覧
+            </Link>
+            <h1>案件詳細</h1>
+          </div>
+          <Link
+            className="secondary-button desktop-edit-link"
+            href={`/jobs/${job.id}/edit`}
+          >
+            編集する
+          </Link>
+        </div>
 
         <div className="job-detail-grid">
           <DetailSection title="基本情報">
