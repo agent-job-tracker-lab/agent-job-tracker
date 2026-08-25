@@ -1,7 +1,7 @@
 import type { AgentCompanyStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 
-import type { Pagination } from "./pagination";
+import type { Pagination } from "@/lib/api/pagination";
 
 export type PageInfo = Pagination & {
   totalCount: number;

@@ -5,9 +5,9 @@ import {
   toAgentCompanyFieldErrors,
 } from "@/features/agent-companies/input";
 import { createAgentCompany } from "@/features/agent-companies/mutations";
-import { parsePagination } from "@/features/agent-companies/pagination";
 import { listAgentCompanies } from "@/features/agent-companies/queries";
 import { errorResponse } from "@/lib/api/error-response";
+import { parsePagination } from "@/lib/api/pagination";
 import { isAllowedOrigin, readJsonBody } from "@/lib/api/request";
 import { auth } from "@/lib/auth";
 
