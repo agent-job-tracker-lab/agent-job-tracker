@@ -21,7 +21,15 @@ export default async function AgentCompanyListPage({
     <main className="protected-page">
       <AppHeader active="agent-companies" />
       <section className="page-content company-page">
-        <h1>エージェント会社一覧</h1>
+        <div className="page-heading-row">
+          <h1>エージェント会社一覧</h1>
+          <Link
+            className="primary-link desktop-create-link"
+            href="/agent-companies/new"
+          >
+            エージェント会社を登録
+          </Link>
+        </div>
         {!pagination.success ? (
           <div className="state-panel state-panel-error" role="alert">
             <h2>一覧を表示できません</h2>
@@ -68,7 +76,14 @@ async function AgentCompanyListContent({
           <Link className="secondary-link" href="/agent-companies">
             最初のページを表示
           </Link>
-        ) : null}
+        ) : (
+          <Link
+            className="primary-link desktop-create-link"
+            href="/agent-companies/new"
+          >
+            エージェント会社を登録
+          </Link>
+        )}
       </div>
     );
   }
