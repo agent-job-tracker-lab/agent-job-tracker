@@ -88,6 +88,110 @@ test("uses readable cards and detail sections on mobile", async ({ page }) => {
     page.getByText("登録・編集・削除はデスクトップで利用できます"),
   ).toBeVisible();
   await expectNoHorizontalClipping(page);
+
+  await page.goto("/jobs/new");
+  await expect(
+    page.getByRole("heading", { name: "登録はデスクトップで利用できます" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "登録する" })).toHaveCount(0);
+  await expectNoHorizontalClipping(page);
+});
+
+test("creates a Job and one initial Application in the same operation", async ({
+  page,
+}) => {
+  const jobName = `E2E登録案件-${Date.now()}`;
+
+  try {
+    await login(page);
+    await page.getByRole("link", { name: "案件を登録" }).click();
+    await expect(page.getByRole("heading", { name: "案件登録" })).toBeVisible();
+    await expect(page.getByLabel("勤務形態必須")).toHaveValue("");
+    await expectNoHorizontalClipping(page);
+
+    await page.getByLabel(/^案件名/u).fill(jobName);
+    await page
+      .getByLabel(/^紹介元エージェント会社/u)
+      .selectOption({ label: "サンプルエージェント株式会社" });
+    await page.getByLabel("企業名").fill("E2E企業");
+    await page.getByLabel("勤務形態必須").selectOption("HYBRID");
+    await page.getByLabel("商流").fill("元請け\n一次請け");
+    await page.getByLabel("単価下限（万円）").fill("60.25");
+    await page.getByLabel("単価上限（万円）").fill("80");
+    await page.getByLabel("勤務形態の補足").fill("週2日出社");
+    await page.getByLabel("都道府県").selectOption("東京都");
+    await page.getByLabel("市区町村").fill("新宿区");
+    await page.getByLabel("最寄り駅").fill("新宿駅");
+    await page.getByLabel("勤務地補足").fill("駅から徒歩5分");
+    await page.getByLabel("稼働率（%）").fill("80.5");
+    await page.getByLabel(/技術/u).fill("TypeScript\nNext.js");
+    await page.getByLabel(/担当工程/u).fill("設計\n実装\nテスト");
+    await page.getByLabel("必須条件").fill("TypeScript実務経験");
+    await page.getByLabel("歓迎条件").fill("Next.js経験");
+    await page.getByRole("button", { name: "登録する" }).click();
+
+    await expect(page.getByRole("heading", { name: "案件詳細" })).toBeVisible();
+    await expect(page.getByText(jobName)).toBeVisible();
+    await expect(page.getByText("60.25〜80万円")).toBeVisible();
+    await expect(page.getByText("東京都新宿区（新宿駅）")).toBeVisible();
+    await expect(page.getByText("TypeScript、Next.js")).toBeVisible();
+    await expect(page.getByText("未応募", { exact: true })).toBeVisible();
+    await expectNoHorizontalClipping(page);
+
+    const job = await prisma.job.findFirstOrThrow({
+      where: { jobName },
+      include: {
+        application: { include: { statusHistories: true } },
+      },
+    });
+    expect(job.monthlyRateMinYen).toBe(602_500);
+    expect(job.utilizationPercent?.toString()).toBe("80.5");
+    expect(job.application).toMatchObject({ currentStatus: "NOT_APPLIED" });
+    expect(job.application?.statusHistories).toHaveLength(0);
+  } finally {
+    const jobs = await prisma.job.findMany({
+      where: { jobName },
+      select: { id: true },
+    });
+    const ids = jobs.map(({ id }) => id);
+    await prisma.application.deleteMany({ where: { jobId: { in: ids } } });
+    await prisma.job.deleteMany({ where: { id: { in: ids } } });
+  }
+});
+
+test("does not create a Job when the introducing company is unavailable", async ({
+  page,
+}) => {
+  const company = await prisma.agentCompany.create({
+    data: {
+      companyName: `E2E削除済み紹介元-${Date.now()}`,
+      deletedAt: new Date(),
+    },
+  });
+  const jobName = `E2E作成不可案件-${Date.now()}`;
+
+  try {
+    await login(page);
+    const response = await page.request.post("/api/jobs", {
+      headers: { origin: "http://localhost:3000" },
+      data: {
+        jobName,
+        agentCompanyId: company.id,
+        workStyle: "UNKNOWN",
+      },
+    });
+
+    expect(response.status()).toBe(404);
+    expect(await response.json()).toMatchObject({
+      code: "AGENT_COMPANY_NOT_FOUND",
+    });
+    expect(await prisma.job.count({ where: { jobName } })).toBe(0);
+    expect(
+      await prisma.application.count({ where: { job: { jobName } } }),
+    ).toBe(0);
+  } finally {
+    await prisma.agentCompany.delete({ where: { id: company.id } });
+  }
 });
 
 test("keeps stable pagination order and excludes logically deleted jobs", async ({
